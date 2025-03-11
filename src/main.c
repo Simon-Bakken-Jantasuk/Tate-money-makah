@@ -1,54 +1,88 @@
-/*
-Raylib example file.
-This is an example main file for a simple raylib project.
-Use this as a starting point or replace it with your code.
-
-by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit https://creativecommons.org/publicdomain/zero/1.0/
-
-*/
-
 #include "raylib.h"
+#include "resource_dir.h"	
+#include <stdio.h>
 
-#include "resource_dir.h"	// utility header for SearchAndSetResourceDir
+int main() {
+    const int SCREEN_WIDTH = 800;
+    const int SCREEN_HEIGHT = 600;
+    float scale = 0.3f;
 
-int main ()
-{
-	// Tell the window to use vsync and work on high DPI displays
-	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+    SearchAndSetResourceDir("resources");
+    SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Tate moneymakah");
 
-	// Create the window and OpenGL context
-	InitWindow(1280, 800, "Hello Raylib");
+    Image matrixImage = LoadImage("background-image.gif");
+    Texture2D matrixTexture = LoadTextureFromImage(matrixImage);
+    UnloadImage(matrixImage);
 
-	// Utility function from resource_dir.h to find the resources folder and set it as the current working directory so we can load from it
-	SearchAndSetResourceDir("resources");
+    InitAudioDevice();
+    Wave brokeWave = LoadWave("broke.wav");
+    Sound brokeSound = LoadSoundFromWave(brokeWave); 
+    UnloadWave(brokeWave);
 
-	// Load a texture from the resources directory
-	Texture wabbit = LoadTexture("wabbit_alpha.png");
-	
-	// game loop
-	while (!WindowShouldClose())		// run the loop untill the user presses ESCAPE or presses the Close button on the window
-	{
-		// drawing
-		BeginDrawing();
+    Music backgroundMusic = LoadMusicStream("background-music.mp3");
+    PlayMusicStream(backgroundMusic);
 
-		// Setup the back buffer for drawing (clear color and depth buffers)
-		ClearBackground(BLACK);
+    Texture2D andrewTate = LoadTexture("andrew-tate.jpg");
+    Texture2D money = LoadTexture("100-dollar-32x32.png");
 
-		// draw some text using the default font
-		DrawText("Hello Raylib", 200,200,20,WHITE);
+    Vector2 positionAndrewTate = { SCREEN_WIDTH / 2 - andrewTate.width / 2, SCREEN_HEIGHT / 2 - andrewTate.height / 2 }; 
+    Vector2 positionMoney = { 0, 0 };
+    bool isVisible = false;
+    float displayTimer = 2.0f;
+    float runningTimer = 0.0f;
+    int moneyCounter = 0;
 
-		// draw our texture to the screen
-		DrawTexture(wabbit, 400, 200, WHITE);
-		
-		// end the frame and get ready for the next one  (display frame, poll input, etc...)
-		EndDrawing();
-	}
+    SetTargetFPS(60);
 
-	// cleanup
-	// unload our texture so it can be cleaned up
-	UnloadTexture(wabbit);
+    while (!WindowShouldClose()) {
+        UpdateMusicStream(backgroundMusic);
 
-	// destroy the window and cleanup the OpenGL context
-	CloseWindow();
-	return 0;
+        if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) positionAndrewTate.y -= 5.0f; 
+        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) positionAndrewTate.x -= 5.0f; 
+        if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) positionAndrewTate.y += 5.0f; 
+        if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) positionAndrewTate.x += 5.0f; 
+
+        if (isVisible) {
+            Rectangle rectAndrewTate = { positionAndrewTate.x, positionAndrewTate.y, andrewTate.width * scale, andrewTate.height * scale };
+            Rectangle rectMoney = { positionMoney.x, positionMoney.y, money.width, money.height };
+
+            if (CheckCollisionRecs(rectAndrewTate, rectMoney)) {
+                moneyCounter++;
+                PlaySound(brokeSound);
+                isVisible = false;
+                runningTimer = 0.0f; 
+            }
+        }
+
+        if (!isVisible) {
+            positionMoney.x = (float)GetRandomValue(0, SCREEN_WIDTH - money.width);
+            positionMoney.y = (float)GetRandomValue(0, SCREEN_HEIGHT - money.height);
+            isVisible = true;
+            runningTimer = 0.0f;
+        } else {
+            runningTimer += GetFrameTime();
+            if (runningTimer >= displayTimer) isVisible = false;
+        }
+        
+        BeginDrawing();
+            DrawTexture(matrixTexture, 0, 0, WHITE);
+            DrawText(TextFormat("Capital: $%d", moneyCounter), 0, 0, 32, WHITE);
+            DrawTextureEx(andrewTate, positionAndrewTate, 0.0f, scale, WHITE); 
+
+            if (isVisible) {
+                DrawTexture(money, positionMoney.x, positionMoney.y, WHITE);
+            }
+        EndDrawing();
+    }
+    UnloadTexture(matrixTexture);
+    UnloadTexture(andrewTate);
+    UnloadTexture(money);
+    UnloadMusicStream(backgroundMusic);
+    UnloadSound(brokeSound);
+
+
+    CloseAudioDevice();
+    CloseWindow();
+    return 0;
 }
